@@ -1,4 +1,4 @@
-module gorr/api
+module ticket/api
 
 go 1.24.5
 

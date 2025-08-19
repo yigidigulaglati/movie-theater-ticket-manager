@@ -2,11 +2,10 @@ package middlewares
 
 import (
 	"errors"
-	"gorr/api/handlers"
 	"log/slog"
 	"os"
 	"strings"
-	"unicode/utf8"
+	"ticket/api/handlers"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -36,7 +35,7 @@ func VerifyToken(c *fiber.Ctx) error {
 
 	bearerTokenString := strings.Split(strings.TrimSpace(authHeader[0]), ` `);
 
-	if len(bearerTokenString) != 2 || utf8.RuneCountInString(bearerTokenString[1]) == 0 {
+	if len(bearerTokenString) != 2{
 		return c.Status(403).JSON(fiber.Map{
 			`message`: `Token not set.`,
 		})
@@ -47,6 +46,7 @@ func VerifyToken(c *fiber.Ctx) error {
 	clm := &handlers.Claims{}
 
 	key := os.Getenv(`TOKEN_PUBLIC_KEY`);
+
 	publicKey, err := jwt.ParseECPublicKeyFromPEM([]byte(key));
 	if err != nil {
 		slog.Error(`Could not parse public key from env var. Error: ` + err.Error());
@@ -63,6 +63,7 @@ func VerifyToken(c *fiber.Ctx) error {
 
 		return publicKey, nil;
 	})
+	
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired){
 			return c.Status(403).JSON(fiber.Map{

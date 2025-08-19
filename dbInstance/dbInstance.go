@@ -2,9 +2,9 @@ package dbInstance
 
 import (
 	"database/sql"
-	"gorr/api/queries"
 	"log/slog"
 	"os"
+	"ticket/api/queries"
 )
 
 type StoreDB struct{

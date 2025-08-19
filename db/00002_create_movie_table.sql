@@ -10,6 +10,8 @@ create table if not exists movie(
     description text,
     duration text,
 
+    check (length(title) >= 2),
+
     primary key(id) 
 );
 -- +goose StatementEnd

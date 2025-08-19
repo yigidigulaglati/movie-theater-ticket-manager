@@ -2,20 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
-	"gorr/api/dbInstance"
 	"log/slog"
 	"strings"
+	"ticket/api/dbInstance"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
-
-type RoomSelectResult struct {
-	selectRoomID   int
-	selectRowIndex int
-	selectColIndex int
-	selectSeat     int
-}
 
 type Schedule struct {
 	RoomID    *int
@@ -40,12 +33,6 @@ type RoomMovieSeating struct {
 	ColIndex    int
 	Seat        int
 }
-
-// room_movie_id integer not null,
-
-//     row_index integer not null,
-//     col_index integer not null,
-//     seat integer not null,
 
 func CreateBulkInsertQueryRoomMovieSeating(data *[]RoomMovieSeating) (string, *[]any, error) {
 	var sb strings.Builder
@@ -250,7 +237,7 @@ func ScheduleNewMovie(c *fiber.Ctx) error {
 		})
 	}
 
-	roomMovieSeatingQuery, roomMovieSeatingArgs, err  :=CreateBulkInsertQueryRoomMovieSeating(&roomMovieSeatingSlice);
+	roomMovieSeatingQuery, roomMovieSeatingArgs, err  := CreateBulkInsertQueryRoomMovieSeating(&roomMovieSeatingSlice);
 
 	if err != nil {
 		slog.Error(`Could not create bulk insert query room movie seating in schedule new movie handler. Error: ` + err.Error());
@@ -263,6 +250,11 @@ func ScheduleNewMovie(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{`message`:`Something went wrong`});
 	}
 
+	err = tx.Commit();
+	if err != nil {
+		slog.Error(`Could not commit transaction in schedule new movie handler. Error: ` + err.Error());
+		return c.Status(500).JSON(fiber.Map{`message`:`Something went wrong.`});
+	}
 
 	return c.Status(200).JSON(fiber.Map{`message`:`Created new scheduled movie screenings.`});
 }

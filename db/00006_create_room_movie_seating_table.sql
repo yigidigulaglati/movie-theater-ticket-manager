@@ -10,6 +10,10 @@ create table if not exists room_movie_seating(
     col_index integer not null,
     seat integer not null,
 
+    check(row_index >= 0),
+    check(col_index >= 0),
+    check(seat = 1 or seat = 2 or seat = -1 or seat -2),
+
     foreign key(room_movie_id) references room_movie(id) on delete cascade,
     primary key(id)
 );

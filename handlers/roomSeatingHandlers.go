@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"gorr/api/dbInstance"
 	"log/slog"
 	"strings"
+	"ticket/api/dbInstance"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -58,6 +58,10 @@ func InsertRoomSeating(c *fiber.Ctx) error{
 		if s.ColIndex == nil || s.RoomID == nil || s.RowIndex == nil || s.Seat == nil{
 			slog.Info(`A nil prop found in insert new room seating.`);
 			return c.Status(400).JSON(fiber.Map{`message`:`Missing data.`});
+		}
+		if *s.Seat != 1 && *s.Seat != 2{
+			slog.Info(`Seat prop was a different value than 1 or 2. Rejecting request.`);
+			return c.Status(400).JSON(fiber.Map{`message`:`Seat prop must be 1 or 2.`});
 		}
 		if *(s.RoomID) != *(firstID){
 			slog.Info(`Different ids for rooms found in insert room seating handler.`);

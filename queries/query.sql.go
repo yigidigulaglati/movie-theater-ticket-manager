@@ -34,6 +34,18 @@ func (q *Queries) DeleteRoomWithID(ctx context.Context, id int64) (int64, error)
 	return result.RowsAffected()
 }
 
+const deleteStaleMovieSchedules = `-- name: DeleteStaleMovieSchedules :execrows
+delete from room_movie where start_date_unix < ?
+`
+
+func (q *Queries) DeleteStaleMovieSchedules(ctx context.Context, startDateUnix int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteStaleMovieSchedules, startDateUnix)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const insertNewMovie = `-- name: InsertNewMovie :execrows
 insert into movie(title, director, release_year, genre, rating, description, duration)
 values (?,?,?,?,?,?,?)
@@ -169,6 +181,144 @@ func (q *Queries) SelectMovieWithID(ctx context.Context, id int64) (int64, error
 	return id, err
 }
 
+const selectRoomOfMovieJoinRoomJoinSeating = `-- name: SelectRoomOfMovieJoinRoomJoinSeating :many
+select room_movie.id, room_movie_seating.id as room_movie_seating_id, room_movie.room_id, room_movie.movie_id, room_movie.start_date_unix, room.room_name, room.seat_price, room_movie_seating.seat, room_movie_seating.row_index, room_movie_seating.col_index from room_movie inner join room on room_movie.room_id = room.id inner join room_movie_seating on room_movie.id = room_movie_seating.room_movie_id where room_movie.id = ?
+`
+
+type SelectRoomOfMovieJoinRoomJoinSeatingRow struct {
+	ID                 int64
+	RoomMovieSeatingID int64
+	RoomID             int64
+	MovieID            int64
+	StartDateUnix      int64
+	RoomName           string
+	SeatPrice          int64
+	Seat               int64
+	RowIndex           int64
+	ColIndex           int64
+}
+
+func (q *Queries) SelectRoomOfMovieJoinRoomJoinSeating(ctx context.Context, id int64) ([]SelectRoomOfMovieJoinRoomJoinSeatingRow, error) {
+	rows, err := q.db.QueryContext(ctx, selectRoomOfMovieJoinRoomJoinSeating, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SelectRoomOfMovieJoinRoomJoinSeatingRow
+	for rows.Next() {
+		var i SelectRoomOfMovieJoinRoomJoinSeatingRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoomMovieSeatingID,
+			&i.RoomID,
+			&i.MovieID,
+			&i.StartDateUnix,
+			&i.RoomName,
+			&i.SeatPrice,
+			&i.Seat,
+			&i.RowIndex,
+			&i.ColIndex,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const selectRoomsOfMovieJoinRoomJoinSeating = `-- name: SelectRoomsOfMovieJoinRoomJoinSeating :many
+select room_movie.id, room_movie.room_id, room_movie.movie_id, room_movie.start_date_unix, room.room_name, room.seat_price, room_movie_seating.seat from room_movie inner join room on room_movie.room_id = room.id inner join room_movie_seating on room_movie.id = room_movie_seating.room_movie_id where room_movie.movie_id = ? and room_movie.start_date_unix > ? order by room_movie.room_id desc, room_movie.start_date_unix desc
+`
+
+type SelectRoomsOfMovieJoinRoomJoinSeatingParams struct {
+	MovieID       int64
+	StartDateUnix int64
+}
+
+type SelectRoomsOfMovieJoinRoomJoinSeatingRow struct {
+	ID            int64
+	RoomID        int64
+	MovieID       int64
+	StartDateUnix int64
+	RoomName      string
+	SeatPrice     int64
+	Seat          int64
+}
+
+func (q *Queries) SelectRoomsOfMovieJoinRoomJoinSeating(ctx context.Context, arg SelectRoomsOfMovieJoinRoomJoinSeatingParams) ([]SelectRoomsOfMovieJoinRoomJoinSeatingRow, error) {
+	rows, err := q.db.QueryContext(ctx, selectRoomsOfMovieJoinRoomJoinSeating, arg.MovieID, arg.StartDateUnix)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SelectRoomsOfMovieJoinRoomJoinSeatingRow
+	for rows.Next() {
+		var i SelectRoomsOfMovieJoinRoomJoinSeatingRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoomID,
+			&i.MovieID,
+			&i.StartDateUnix,
+			&i.RoomName,
+			&i.SeatPrice,
+			&i.Seat,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const selectSeatInRoomMovieSeating = `-- name: SelectSeatInRoomMovieSeating :one
+select room_movie.id as room_movie_id, room_movie.room_id as room_id, room_movie.movie_id as movie_id, room_movie.start_date_unix as start_date_unix, room_movie_seating.id as room_movie_seating_id, room_movie_seating.row_index as row_index, room_movie_seating.col_index as col_index, room_movie_seating.seat as seat from room_movie_seating join room_movie on room_movie_seating.room_movie_id = room_movie.id where room_movie_seating.room_movie_id = ? and room_movie_seating.row_index = ? and room_movie_seating.col_index = ?
+`
+
+type SelectSeatInRoomMovieSeatingParams struct {
+	RoomMovieID int64
+	RowIndex    int64
+	ColIndex    int64
+}
+
+type SelectSeatInRoomMovieSeatingRow struct {
+	RoomMovieID        int64
+	RoomID             int64
+	MovieID            int64
+	StartDateUnix      int64
+	RoomMovieSeatingID int64
+	RowIndex           int64
+	ColIndex           int64
+	Seat               int64
+}
+
+func (q *Queries) SelectSeatInRoomMovieSeating(ctx context.Context, arg SelectSeatInRoomMovieSeatingParams) (SelectSeatInRoomMovieSeatingRow, error) {
+	row := q.db.QueryRowContext(ctx, selectSeatInRoomMovieSeating, arg.RoomMovieID, arg.RowIndex, arg.ColIndex)
+	var i SelectSeatInRoomMovieSeatingRow
+	err := row.Scan(
+		&i.RoomMovieID,
+		&i.RoomID,
+		&i.MovieID,
+		&i.StartDateUnix,
+		&i.RoomMovieSeatingID,
+		&i.RowIndex,
+		&i.ColIndex,
+		&i.Seat,
+	)
+	return i, err
+}
+
 const selectUserWithUsername = `-- name: SelectUserWithUsername :one
 select id, username, password from user
 where username = ?
@@ -241,6 +391,30 @@ type UpdateRoomWithIDParams struct {
 
 func (q *Queries) UpdateRoomWithID(ctx context.Context, arg UpdateRoomWithIDParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateRoomWithID, arg.RoomName, arg.SeatPrice, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updateSeatInRoomMovieSeating = `-- name: UpdateSeatInRoomMovieSeating :execrows
+update room_movie_seating set seat = ? where room_movie_id = ? and row_index = ? and col_index = ?
+`
+
+type UpdateSeatInRoomMovieSeatingParams struct {
+	Seat        int64
+	RoomMovieID int64
+	RowIndex    int64
+	ColIndex    int64
+}
+
+func (q *Queries) UpdateSeatInRoomMovieSeating(ctx context.Context, arg UpdateSeatInRoomMovieSeatingParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateSeatInRoomMovieSeating,
+		arg.Seat,
+		arg.RoomMovieID,
+		arg.RowIndex,
+		arg.ColIndex,
+	)
 	if err != nil {
 		return 0, err
 	}

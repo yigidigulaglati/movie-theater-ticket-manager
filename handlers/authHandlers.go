@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"gorr/api/dbInstance"
-	"gorr/api/queries"
 	"log/slog"
 	"os"
+	"ticket/api/dbInstance"
+	"ticket/api/queries"
 	"time"
 	"unicode/utf8"
 
@@ -18,8 +18,9 @@ import (
 )
 
 func ValidateUsername(uname string) bool {
+	
 	length := utf8.RuneCountInString(uname);
-	if length  < 4 || length > 20{
+	if length  < 5 || length > 20{
 		return false;
 	}
 	return true;
@@ -31,8 +32,6 @@ type User struct{
 }
 
 type Claims struct{
-	
-	
 	Username string;
 	jwt.RegisteredClaims;
 }
@@ -51,7 +50,7 @@ func Signup(c *fiber.Ctx) error {
 	}
 
 	if !ValidateUsername(*(currUser.Username)) {
-		return fiber.NewError(400, `Invalid username. Must be more than 4 chars and less than 20 chars.`)
+		return fiber.NewError(400, `Invalid username. Must be more than 5 chars and less than 20 chars.`)
 	}
 	username := *(currUser.Username)
 	password := *(currUser.Password)
@@ -95,7 +94,7 @@ func Login(c *fiber.Ctx) error{
 		});
 	}
 
-	dbUser, err := dbInstance.Store.Queries.SelectUserWithUsername(context.Background(), *u.Username);
+	dbUser, err := dbInstance.Store.Queries.SelectUserWithUsername(c.Context(), *u.Username);
 
 	
 	if err != nil {
@@ -154,4 +153,4 @@ func Login(c *fiber.Ctx) error{
 		`message`: `Logged in.`,
 		`token`: tokenString,
 	});
-}	
+}

@@ -5,6 +5,8 @@ create table if not exists user(
     username text not null unique,
     password text not null,
 
+    check(length(username) >= 5),
+
     primary key (id)
 );
 -- +goose StatementEnd

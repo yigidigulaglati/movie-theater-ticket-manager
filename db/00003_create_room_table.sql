@@ -5,6 +5,9 @@ create table if not exists room(
     room_name text not null,
     seat_price integer not null,
 
+    check (seat_price >= 0),
+    check (length(room_name) >= 2),
+
     primary key(id)
 );
 -- +goose StatementEnd
